@@ -1,0 +1,73 @@
+--SQL queries for each of the questions:
+--How many times was the app downloaded?
+
+SELECT COUNT(*) AS total_downloads
+FROM app_downloads;
+
+--How many users signed up on the app?
+
+SELECT COUNT(DISTINCT user_id) AS total_signups
+FROM signups;
+
+--How many rides were requested through the app?
+
+SELECT COUNT(*) AS total_ride_requests
+FROM ride_requests;
+
+--How many rides were requested and completed through the app?
+
+SELECT COUNT(*) AS total_completed_rides
+FROM ride_requests
+WHERE dropoff_ts IS NOT NULL;
+
+--How many rides were requested and how many unique users requested a ride?
+
+SELECT 
+    COUNT(*) AS total_ride_requests,
+    COUNT(DISTINCT user_id) AS unique_users
+FROM ride_requests;
+
+--What is the average time of a ride from pick up to drop off?
+
+SELECT AVG(EXTRACT(EPOCH FROM (dropoff_ts - pickup_ts))/60) AS average_ride_time_minutes
+FROM ride_requests
+WHERE pickup_ts IS NOT NULL AND dropoff_ts IS NOT NULL;
+
+--How many rides were accepted by a driver?
+
+SELECT COUNT(*) AS total_accepted_rides
+FROM ride_requests
+WHERE accept_ts IS NOT NULL;
+
+--How many rides did we successfully collect payments and how much was collected?
+
+SELECT 
+    COUNT(*) AS successful_payments,
+    SUM(purchase_amount_usd) AS total_collected
+FROM transactions
+WHERE charge_status = 'approved';
+
+--How many ride requests happened on each platform?
+
+SELECT ad.platform, COUNT(rr.ride_id) AS ride_request_count
+FROM ride_requests rr
+JOIN signups s ON rr.user_id = s.user_id
+JOIN app_downloads ad ON s.session_id = ad.app_download_key
+GROUP BY ad.platform;
+
+--What is the drop-off from users signing up to users requesting a ride?
+
+WITH signup_users AS (
+    SELECT COUNT(DISTINCT user_id) AS total_signups
+    FROM signups
+),
+ride_request_users AS (
+    SELECT COUNT(DISTINCT user_id) AS total_ride_requests
+    FROM ride_requests
+)
+SELECT 
+    su.total_signups,
+    rru.total_ride_requests,
+    su.total_signups - rru.total_ride_requests AS dropoff
+FROM signup_users su, ride_request_users rru;
+
